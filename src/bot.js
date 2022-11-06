@@ -45,7 +45,7 @@ bot.onText(/([0-9\., ]+)/i, (msg, match) => {
 
     currConverter.convert(amount, CurrencyCodeSource, CurrencyCodeTo).then((result) => {
         result = Math.round(result * 100) / 100;
-        bot.sendMessage(msg.chat.id, result.prettyPrint() + ' ' + CurrencyCodeTo);
+        bot.sendMessage(msg.chat.id, Number(amount).prettyPrint() + ' ' + CurrencyCodeSource + ' = ' + result.prettyPrint() + ' ' + CurrencyCodeTo);
     });
 });
 

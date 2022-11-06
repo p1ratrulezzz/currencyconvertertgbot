@@ -1,1 +1,10 @@
+version: '2'
 services:
+  app:
+    build: .
+    env_file:
+      - ./.env
+    working_dir: /app
+    user: 'app'
+    command: ["npm", "run", "bot"]
+    restart: unless-stopped
