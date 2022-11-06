@@ -3,6 +3,7 @@ class Currency extends Object {
     Name;
     CodeTo;
     Code;
+    Value;
 }
 
 export {

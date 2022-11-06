@@ -12,10 +12,20 @@ let converter = new CurrencyConverter();
 let cbrSource = new CbrSourcePlugin();
 
 converter.setSourcePlugin(cbrSource);
-let usd = await converter.convert(7000, 'KZT', 'RUB');
-let usd2 = await converter.convert(7000, 'USD', 'RUB');
-let usd3 = await converter.convert(8, 'USD', 'KZT');
 
-log.log('500 rub is ' + String(usd) + ' usd');
-log.log('500 rub is ' + String(usd2) + ' usd');
-log.log('500 rub is ' + String(usd3) + ' usd');
+let tests = [
+    [7000, 'RUB', 'USD'],
+    [7000, 'USD', 'USD'],
+    [7000, 'USD', 'RUB'],
+    [7000, 'USD', 'KZT'],
+    [7000, 'KZT', 'EUR'],
+    [7000, 'KZT', 'RUB'],
+    [7000, 'USD', 'EUR'],
+    [7000, 'EUR', 'USD'],
+];
+
+tests.forEach((_t) => {
+    converter.convert(..._t).then((result) => {
+        log.log(_t[0] + ' ' + _t[1] + ' = ' + result + ' ' + _t[2]);
+    });
+})

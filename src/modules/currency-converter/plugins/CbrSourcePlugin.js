@@ -10,13 +10,6 @@ class CbrSourcePlugin extends SourcePluginAbstract {
 
     /**
      *
-     * @type {Object}
-     * @private
-     */
-    _currencies = null;
-
-    /**
-     *
      * @private
      */
     _locked;
@@ -43,15 +36,12 @@ class CbrSourcePlugin extends SourcePluginAbstract {
 
         this._cacheManager = caching(fsStore);
         this._locked = true;
-        this._currencies = {};
         this._currencyNative = new Currency();
         this._currencyNative.Name = 'RUB';
         this._currencyNative.Code = 'RUB';
         this._currencyNative.CodeTo = 'RUB';
         this._currencyNative.Nominal = 1;
         this._currencyNative.Value = 1;
-
-        this._currencies[this._currencyNative.CodeTo] = this._currencyNative;
 
         this._getCurrencies();
     }
@@ -103,44 +93,43 @@ class CbrSourcePlugin extends SourcePluginAbstract {
             });
     }
 
-    checkLock() {
+    fromToCurrency(codeSource, codeTo) {
         let me = this;
-        return new Promise((resolve) => {
-            if (this._locked === false) {
-                return resolve();
+        if (codeSource === codeTo) {
+            return new Promise((resolve) => resolve(me._currencyNative));
+        }
+
+        return this._getCurrencies().then((currencies) => {
+            let currency = currencies[codeSource + '_' + codeTo] || null;
+
+            if (currency) {
+                return currency;
             }
 
-            let interValId;
-            let waitFunc = function () {
-                if (me._locked === false) {
-                    clearInterval(interValId);
-                    resolve();
-                }
+            let sourceCurrencyQuote = currencies[codeSource] || null;
+            let toCurrencyQuote = currencies[codeTo] || null;
+
+            if (sourceCurrencyQuote == null || toCurrencyQuote == null) {
+                throw new Error('currency ' + String(codeSource) + ' or ' + String(codeTo) + ' is not supported');
             }
 
-            interValId = setInterval(waitFunc, 1);
+            currency = new Currency();
+            currency.Code = codeSource;
+            currency.CodeTo = codeTo;
+            currency.Name = codeSource + ' to ' + codeTo;
+            currency.Nominal = 1;
+            currency.Value =
+                (sourceCurrencyQuote.Value / sourceCurrencyQuote.Nominal)
+                /
+                (toCurrencyQuote.Value / toCurrencyQuote.Nominal);
+
+            return currency;
         });
     }
 
     findCurrency(codeFrom, codeTo) {
         let me = this;
-        return this._getCurrencies().then((currencies) => {
-            let codeSource = codeFrom;
-            let invert = false;
-            if (codeFrom === me._currencyNative.CodeTo) {
-                codeSource = codeTo;
-                invert = true;
-            }
-
-            let currency = currencies[codeSource] || null;
-            if (currency === null) {
-                throw new Error('currency ' + String(codeTo) + ' is not supported');
-            }
-
-            if (invert) {
-                currency.Value = 1 / (currency.Value / currency.Nominal);
-            }
-
+        return me.fromToCurrency(codeFrom, codeTo).then((currency) => {
             return currency;
         });
     }
