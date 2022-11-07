@@ -2,16 +2,15 @@
 
 import {Logger} from "./modules/logger/logger.js";
 import {CurrencyConverter} from "./modules/currency-converter/currency-converter.js";
-import {CbrSourcePlugin} from "./modules/currency-converter/plugins/CbrSourcePlugin.js";
+import {CbrSourcePlugin} from "./modules/currency-converter/plugins/cbr-source-plugin.js";
+import {FixerPlugin} from "./modules/currency-converter/plugins/fixer-plugin.js";
 
 let log = new Logger();
 
 log.log('Started');
 
-let converter = new CurrencyConverter();
-let cbrSource = new CbrSourcePlugin();
-
-converter.setSourcePlugin(cbrSource);
+let sourcePlugin = new FixerPlugin(process.env.FIXER_APIKEY);
+let converter = new CurrencyConverter(sourcePlugin);
 
 let tests = [
     [7000, 'RUB', 'USD'],
@@ -22,6 +21,7 @@ let tests = [
     [7000, 'KZT', 'RUB'],
     [7000, 'USD', 'EUR'],
     [7000, 'EUR', 'USD'],
+    [7000, 'GEL', 'RUB'],
 ];
 
 tests.forEach((_t) => {

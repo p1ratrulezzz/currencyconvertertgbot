@@ -1,7 +1,8 @@
 import {default as TelegramBot} from "node-telegram-bot-api";
 import {CurrencyConverter} from "./modules/currency-converter/currency-converter.js";
-import {CbrSourcePlugin} from "./modules/currency-converter/plugins/CbrSourcePlugin.js";
+import {CbrSourcePlugin} from "./modules/currency-converter/plugins/cbr-source-plugin.js";
 import {createHash} from "node:crypto"
+import {FixerPlugin} from "./modules/currency-converter/plugins/fixer-plugin.js";
 
 const token = process.env.BOT_TOKEN;
 
@@ -14,9 +15,8 @@ const bot = new TelegramBot(token, {polling: true});
 const CurrencyCodeSource = String(process.env.CURR_SOURCE).toUpperCase();
 const CurrencyCodeTo = String(process.env.CURR_TO).toUpperCase();
 
-const cbrSource = new CbrSourcePlugin();
-const currConverter = new CurrencyConverter();
-currConverter.setSourcePlugin(cbrSource);
+const sourcePlugin = new FixerPlugin(process.env.FIXER_APIKEY, 'USD');
+const currConverter = new CurrencyConverter(sourcePlugin);
 
 Number.prototype.prettyPrint = function() {
     let wholeValue = Math.floor(this);
@@ -31,22 +31,21 @@ Number.prototype.prettyPrint = function() {
     splitted.forEach((_val, i) => {
         _val = parseInt(_val, 10);
         if ((splitted.length - i) % 3 === 0) {
-            let a = 1;
             splitted[i] = ' ' + String(_val);
         }
     });
 
-    return splitted.join('') + decimalValue;
+    return splitted.join('').trim() + decimalValue;
 }
 
-function processConvertCommand(text) {
+function processConvertCommand(text, sourceCode, toCode) {
     let amount = String(text).replaceAll(',', '.');
     amount = amount.replaceAll(' ', '');
     amount = parseFloat(amount);
 
-    return currConverter.convert(amount, CurrencyCodeSource, CurrencyCodeTo).then((result) => {
+    return currConverter.convert(amount, sourceCode, toCode).then((result) => {
         result = Math.round(result * 100) / 100;
-        return Number(amount).prettyPrint() + ' ' + CurrencyCodeSource + ' = ' + result.prettyPrint() + ' ' + CurrencyCodeTo;
+        return Number(amount).prettyPrint() + ' ' + sourceCode + ' = ' + result.prettyPrint() + ' ' + toCode;
     });
 }
 
@@ -56,8 +55,17 @@ bot.onText(currencyTextRegex, (msg, match) => {
     if (match[1] == null) {
         return;
     }
-    processConvertCommand(match[1]).then((responseText) => {
-        bot.sendMessage(msg.chat.id, responseText);
+
+    let amount = match[1];
+
+    let responseTexts = [];
+    processConvertCommand(amount, CurrencyCodeSource, CurrencyCodeTo).then((responseText) => {
+        responseTexts.push(responseText);
+        processConvertCommand(amount, CurrencyCodeTo, CurrencyCodeSource).then((responseText) => {
+            responseTexts.push(responseText);
+
+            bot.sendMessage(msg.chat.id, responseTexts.join("\n"));
+        });
     });
 });
 
@@ -72,15 +80,31 @@ bot.on('inline_query', (msg) => {
         return;
     }
 
+    let amount = match[1];
+
     let hash = createHash('sha256').update(String(Number(new Date())));
 
-    processConvertCommand(match[1]).then((responseText) => {
-        bot.answerInlineQuery(msg.id, [{
+    processConvertCommand(amount, CurrencyCodeSource, CurrencyCodeTo).then((responseText) => {
+        let queryAnswers = [];
+
+        queryAnswers.push({
             type: 'article',
-            id: hash.digest('hex'),
+            id: hash.copy().update('direct').digest('hex'),
             message_text: responseText,
             title: 'Convert ' + String(msg.query) + ' ' + CurrencyCodeSource + ' to ' + CurrencyCodeTo
-        }]);
+        });
+
+        return processConvertCommand(amount, CurrencyCodeTo, CurrencyCodeSource).then((responseText) => {
+            queryAnswers.push({
+                type: 'article',
+                id: hash.copy().update('invert').digest('hex'),
+                message_text: responseText,
+                title: 'Convert ' + String(msg.query) + ' ' + CurrencyCodeTo + ' to ' + CurrencyCodeSource
+            });
+
+            bot.answerInlineQuery(msg.id, queryAnswers);
+        });
+
     });
 });
 
