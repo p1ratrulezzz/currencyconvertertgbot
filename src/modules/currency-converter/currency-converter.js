@@ -1,10 +1,12 @@
 'use strict';
 
-import {XMLParser, XMLBuilder, XMLValidator} from "fast-xml-parser";
-import axios from "axios";
 import {SourcePluginAbstract} from "./source-plugin-abstract.js";
 
 class CurrencyConverter {
+
+    constructor(plugin) {
+        this.setSourcePlugin(plugin);
+    }
 
     /**
      *
@@ -25,7 +27,7 @@ class CurrencyConverter {
      * @returns {Promise}
      */
     convert(value, codeSource, codeTo) {
-        return this._sourcePlugin.findCurrency(codeSource, codeTo).then((currency) => {
+        return this._sourcePlugin.fromToCurrency(codeSource, codeTo).then((currency) => {
             return (currency.Value / currency.Nominal) * value;
         });
     }
