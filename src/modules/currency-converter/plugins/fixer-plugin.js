@@ -20,13 +20,17 @@ class FixerPlugin extends SourcePluginAbstract {
         }
     }
 
+    cacheKey(options) {
+        return super.cacheKey(options) + ':' + this._currencyNative.Code;
+    }
+
     /**
      * {@inheritDoc}
      */
     loadCurrencies() {
         return axios.get(this.ENDPOINT + '/fixer/latest',{
             params: {
-                'base': 'USD',
+                'base': this._currencyNative.Code,
             },
             headers: {
                 'apikey': this.API_KEY

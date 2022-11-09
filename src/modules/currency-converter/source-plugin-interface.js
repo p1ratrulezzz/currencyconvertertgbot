@@ -18,6 +18,13 @@ class SourcePluginInterface {
      */
     loadCurrencies() {}
 
+    /**
+     *
+     * @param options
+     * @return {String}
+     */
+    cacheKey(options) {}
+
 }
 export {
     SourcePluginInterface
