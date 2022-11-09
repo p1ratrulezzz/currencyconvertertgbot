@@ -2,20 +2,8 @@ import {default as TelegramBot} from "node-telegram-bot-api";
 import {CurrencyConverter} from "./modules/currency-converter/currency-converter.js";
 import {createHash} from "node:crypto"
 import {FixerPlugin} from "./modules/currency-converter/plugins/fixer-plugin.js";
-
-const token = process.env.BOT_TOKEN;
-
-// Create a bot that uses 'polling' to fetch new updates
-/**
- * @var bot {TelegramBot}
- */
-const bot = new TelegramBot(token, {polling: true});
-
-const CurrencyCodeSource = String(process.env.CURR_SOURCE).toUpperCase();
-const CurrencyCodeTo = String(process.env.CURR_TO).toUpperCase();
-
-const sourcePlugin = new FixerPlugin(process.env.FIXER_APIKEY, 'USD');
-const currConverter = new CurrencyConverter(sourcePlugin);
+import {BOTS, FIXER_API_KEY} from "../config.js";
+import {Logger} from "./modules/logger/logger.js";
 
 Number.prototype.prettyPrint = function() {
     let wholeValue = Math.floor(this);
@@ -37,73 +25,93 @@ Number.prototype.prettyPrint = function() {
     return splitted.join('').trim() + decimalValue;
 }
 
-function processConvertCommand(text, sourceCode, toCode) {
-    let amount = String(text).replaceAll(',', '.');
-    amount = amount.replaceAll(' ', '');
-    amount = parseFloat(amount);
-
-    return currConverter.convert(amount, sourceCode, toCode).then((result) => {
-        result = Math.round(result * 100) / 100;
-        return Number(amount).prettyPrint() + ' ' + sourceCode + ' = ' + result.prettyPrint() + ' ' + toCode;
-    });
-}
-
 let currencyTextRegex = /([0-9\., ]+)/i;
 
-bot.onText(currencyTextRegex, (msg, match) => {
-    if (match[1] == null) {
-        return;
+function createBot(botOptions = {}, sourcePlugin, CurrencyCodeSource, CurrencyCodeTo) {
+    // Create a bot that uses 'polling' to fetch new updates
+    /**
+     * @var bot {TelegramBot}
+     */
+    const bot = new TelegramBot(botOptions.token, {polling: true});
+
+    const currConverter = new CurrencyConverter(sourcePlugin);
+
+    function processConvertCommand(text, sourceCode, toCode) {
+        let amount = String(text).replaceAll(',', '.');
+        amount = amount.replaceAll(' ', '');
+        amount = parseFloat(amount);
+
+        return currConverter.convert(amount, sourceCode, toCode).then((result) => {
+            result = Math.round(result * 100) / 100;
+            return Number(amount).prettyPrint() + ' ' + sourceCode + ' = ' + result.prettyPrint() + ' ' + toCode;
+        });
     }
 
-    let amount = match[1];
+    bot.onText(currencyTextRegex, (msg, match) => {
+        if (match[1] == null) {
+            return;
+        }
 
-    let responseTexts = [];
-    processConvertCommand(amount, CurrencyCodeSource, CurrencyCodeTo).then((responseText) => {
-        responseTexts.push(responseText);
-        processConvertCommand(amount, CurrencyCodeTo, CurrencyCodeSource).then((responseText) => {
+        let amount = match[1];
+
+        let responseTexts = [];
+        processConvertCommand(amount, CurrencyCodeSource, CurrencyCodeTo).then((responseText) => {
             responseTexts.push(responseText);
+            processConvertCommand(amount, CurrencyCodeTo, CurrencyCodeSource).then((responseText) => {
+                responseTexts.push(responseText);
 
-            bot.sendMessage(msg.chat.id, responseTexts.join("\n"));
+                bot.sendMessage(msg.chat.id, responseTexts.join("\n"));
+            });
         });
     });
-});
 
-bot.onText(/\/start/i, (msg) => {
-    bot.sendMessage(msg.chat.id, 'Write some amount in ' + CurrencyCodeSource + ' to convert to ' + CurrencyCodeTo);
-})
+    bot.onText(/\/start/i, (msg) => {
+        bot.sendMessage(msg.chat.id, 'Write some amount in ' + CurrencyCodeSource + ' to convert to ' + CurrencyCodeTo);
+    })
 
-bot.on('inline_query', (msg) => {
-    let query = String(msg.query);
-    let match = query.match(currencyTextRegex);
-    if (match == null || match[1] == null) {
-        return;
-    }
+    bot.on('inline_query', (msg) => {
+        let query = String(msg.query);
+        let match = query.match(currencyTextRegex);
+        if (match == null || match[1] == null) {
+            return;
+        }
 
-    let amount = match[1];
+        let amount = match[1];
 
-    let hash = createHash('sha256').update(String(Number(new Date())) + String(msg.id));
+        let hash = createHash('sha256').update(String(Number(new Date())) + String(msg.id));
 
-    processConvertCommand(amount, CurrencyCodeSource, CurrencyCodeTo).then((responseText) => {
-        let queryAnswers = [];
+        processConvertCommand(amount, CurrencyCodeSource, CurrencyCodeTo).then((responseText) => {
+            let queryAnswers = [];
 
-        queryAnswers.push({
-            type: 'article',
-            id: hash.copy().update('direct').digest('hex'),
-            message_text: responseText,
-            title: 'Convert ' + String(msg.query) + ' ' + CurrencyCodeSource + ' to ' + CurrencyCodeTo
-        });
-
-        return processConvertCommand(amount, CurrencyCodeTo, CurrencyCodeSource).then((responseText) => {
             queryAnswers.push({
                 type: 'article',
-                id: hash.copy().update('invert').digest('hex'),
+                id: hash.copy().update('direct').digest('hex'),
                 message_text: responseText,
-                title: 'Convert ' + String(msg.query) + ' ' + CurrencyCodeTo + ' to ' + CurrencyCodeSource
+                title: 'Convert ' + String(msg.query) + ' ' + CurrencyCodeSource + ' to ' + CurrencyCodeTo
             });
 
-            bot.answerInlineQuery(msg.id, queryAnswers);
-        });
+            return processConvertCommand(amount, CurrencyCodeTo, CurrencyCodeSource).then((responseText) => {
+                queryAnswers.push({
+                    type: 'article',
+                    id: hash.copy().update('invert').digest('hex'),
+                    message_text: responseText,
+                    title: 'Convert ' + String(msg.query) + ' ' + CurrencyCodeTo + ' to ' + CurrencyCodeSource
+                });
 
+                bot.answerInlineQuery(msg.id, queryAnswers);
+            });
+
+        });
     });
+
+    return bot;
+}
+
+let i = 1;
+let log = new Logger();
+BOTS.forEach((botConfig) => {
+    let sourcePlugin = new FixerPlugin(FIXER_API_KEY, botConfig.to);
+    createBot(botConfig, sourcePlugin, botConfig.source, botConfig.to);
+    log.log('Bot ' + String(i++) + ' started');
 });
 

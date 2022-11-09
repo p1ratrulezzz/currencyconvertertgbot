@@ -46,6 +46,10 @@ class SourcePluginAbstract extends SourcePluginInterface {
         this.getCurrencies();
     }
 
+    cacheKey(options) {
+        return 'currencies';
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -54,14 +58,14 @@ class SourcePluginAbstract extends SourcePluginInterface {
 
         return me._cacheManager.then((cache) => {
             return cache
-                .get('currencies')
+                .get(this.cacheKey())
                 .then((data) => {
                     if (data != null) {
                         return data;
                     }
 
                     return me.loadCurrencies().then((currencies) => {
-                        return cache.set('currencies', currencies).then(() => {
+                        return cache.set(this.cacheKey(), currencies).then(() => {
                             return currencies;
                         });
                     });
