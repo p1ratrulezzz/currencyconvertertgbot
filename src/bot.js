@@ -1,6 +1,5 @@
 import {default as TelegramBot} from "node-telegram-bot-api";
 import {CurrencyConverter} from "./modules/currency-converter/currency-converter.js";
-import {CbrSourcePlugin} from "./modules/currency-converter/plugins/cbr-source-plugin.js";
 import {createHash} from "node:crypto"
 import {FixerPlugin} from "./modules/currency-converter/plugins/fixer-plugin.js";
 
@@ -82,7 +81,7 @@ bot.on('inline_query', (msg) => {
 
     let amount = match[1];
 
-    let hash = createHash('sha256').update(String(Number(new Date())));
+    let hash = createHash('sha256').update(String(Number(new Date())) + String(msg.id));
 
     processConvertCommand(amount, CurrencyCodeSource, CurrencyCodeTo).then((responseText) => {
         let queryAnswers = [];
