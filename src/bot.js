@@ -74,7 +74,7 @@ function createBot(botOptions = {}, sourcePlugin, CurrencyCodeSource, CurrencyCo
             return;
         }
 
-        if (match[2] != null) {
+        if (match[2] != null && match[2] !== "") {
             return;
         }
 
