@@ -114,7 +114,7 @@ function createBot(botOptions = {}, sourcePlugin, CurrencyCodeSource, CurrencyCo
             queryAnswers.push({
                 type: 'article',
                 id: hash.copy().update('invert').digest('hex'),
-                message_text: responseText.invert,
+                message_text: responseTexts.invert,
                 title: 'Convert ' + String(msg.query) + ' ' + CurrencyCodeTo + ' to ' + CurrencyCodeSource
             });
 
