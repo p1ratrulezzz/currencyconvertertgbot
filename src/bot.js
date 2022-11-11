@@ -25,7 +25,7 @@ Number.prototype.prettyPrint = function() {
     return splitted.join('').trim() + decimalValue;
 }
 
-let currencyTextRegex = /([0-9\., ]+)/i;
+let currencyTextRegex = /([0-9\., ]+)(.*)/i;
 
 function createBot(botOptions = {}, sourcePlugin, CurrencyCodeSource, CurrencyCodeTo) {
     // Create a bot that uses 'polling' to fetch new updates
@@ -47,26 +47,47 @@ function createBot(botOptions = {}, sourcePlugin, CurrencyCodeSource, CurrencyCo
         });
     }
 
+    async function convertTwoDirections(text, code1, code2) {
+        return Promise.resolve({
+            'direct': await processConvertCommand(text, code1, code2),
+            'invert': await processConvertCommand(text, code2, code1),
+        });
+    }
+
+    bot.onText(/([0-9]+)\s*([A-z]+)(?:\s*[A-z0-9А-я]*\s([A-z]+))?/i, (msg, match) => {
+        let curr1 = match[2] || CurrencyCodeSource;
+        let curr2 = match[3] || CurrencyCodeTo;
+        let amount = match[1] || null;
+        if (amount === null) {
+            return;
+        }
+
+        processConvertCommand(amount, curr1.toUpperCase(), curr2.toUpperCase()).then((responseText) => {
+            bot.sendMessage(msg.chat.id, responseText);
+        }).catch((err) => {
+            bot.sendMessage(msg.chat.id, err.message);
+        });
+    });
+
     bot.onText(currencyTextRegex, (msg, match) => {
         if (match[1] == null) {
             return;
         }
 
+        if (match[2] != null) {
+            return;
+        }
+
         let amount = match[1];
 
-        let responseTexts = [];
-        processConvertCommand(amount, CurrencyCodeSource, CurrencyCodeTo).then((responseText) => {
-            responseTexts.push(responseText);
-            processConvertCommand(amount, CurrencyCodeTo, CurrencyCodeSource).then((responseText) => {
-                responseTexts.push(responseText);
-
-                bot.sendMessage(msg.chat.id, responseTexts.join("\n"));
-            });
+        convertTwoDirections(amount, CurrencyCodeSource, CurrencyCodeTo).then((responseTexts) => {
+            bot.sendMessage(msg.chat.id, responseTexts.direct + "\n" + responseTexts.invert);
         });
     });
 
     bot.onText(/\/start/i, (msg) => {
-        bot.sendMessage(msg.chat.id, 'Write some amount in ' + CurrencyCodeSource + ' to convert to ' + CurrencyCodeTo);
+        bot.sendMessage(msg.chat.id, 'Write some amount in ' + CurrencyCodeSource + ' to convert to ' + CurrencyCodeTo
+            + ' or write in format 500 USD to EUR or 500 USD to convert to ' + CurrencyCodeTo);
     })
 
     bot.on('inline_query', (msg) => {
@@ -80,27 +101,24 @@ function createBot(botOptions = {}, sourcePlugin, CurrencyCodeSource, CurrencyCo
 
         let hash = createHash('sha256').update(String(Number(new Date())) + String(msg.id));
 
-        processConvertCommand(amount, CurrencyCodeSource, CurrencyCodeTo).then((responseText) => {
+        convertTwoDirections(amount, CurrencyCodeSource, CurrencyCodeTo).then((responseTexts) => {
             let queryAnswers = [];
 
             queryAnswers.push({
                 type: 'article',
                 id: hash.copy().update('direct').digest('hex'),
-                message_text: responseText,
+                message_text: responseTexts.direct,
                 title: 'Convert ' + String(msg.query) + ' ' + CurrencyCodeSource + ' to ' + CurrencyCodeTo
             });
 
-            return processConvertCommand(amount, CurrencyCodeTo, CurrencyCodeSource).then((responseText) => {
-                queryAnswers.push({
-                    type: 'article',
-                    id: hash.copy().update('invert').digest('hex'),
-                    message_text: responseText,
-                    title: 'Convert ' + String(msg.query) + ' ' + CurrencyCodeTo + ' to ' + CurrencyCodeSource
-                });
-
-                bot.answerInlineQuery(msg.id, queryAnswers);
+            queryAnswers.push({
+                type: 'article',
+                id: hash.copy().update('invert').digest('hex'),
+                message_text: responseText.invert,
+                title: 'Convert ' + String(msg.query) + ' ' + CurrencyCodeTo + ' to ' + CurrencyCodeSource
             });
 
+            bot.answerInlineQuery(msg.id, queryAnswers);
         });
     });
 

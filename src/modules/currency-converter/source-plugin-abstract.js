@@ -29,9 +29,12 @@ class SourcePluginAbstract extends SourcePluginInterface {
         let hash = createHash('sha256');
         hash.update(this.constructor.name);
 
+        let ttl_date = new Date();
+        ttl_date.setHours(23, 59, 59, 999);
+
         let fsStore = new DiskStore({
             path: os.tmpdir() + '/' + hash.digest('hex'),
-            ttl: 12 * 60 * 60, // 12 hours
+            ttl: Math.floor(Number(ttl_date) / 1000)
         });
 
         this._cacheManager = caching(fsStore);
