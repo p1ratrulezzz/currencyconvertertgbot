@@ -1,4 +1,0 @@
-services:
-  server:
-    ports:
-      - '20000:20000'
