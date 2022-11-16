@@ -38,6 +38,7 @@ routes.newRoute('/api/currency-converter/v1/convert',function (req, res, urlPars
                 promises = promises.then((_response) => {
                     return currencyConverter.convert(_value['value_from'], _value['code_from'], _value['code_to']).then((_result) => {
                         _value['value_to'] = _result;
+                        _value['type'] = 'converted_item';
                         _response.push(_value);
 
                         return _response;
@@ -48,6 +49,8 @@ routes.newRoute('/api/currency-converter/v1/convert',function (req, res, urlPars
             promises.then((_response) => {
                 res.writeHead('200', {'Content-Type': 'application/json'});
                 res.end(JSON.stringify(_response));
+            }).catch((err) => {
+                return endRequestWithError(req, res, 'exception', err.message);
             });
 
             return promises;
