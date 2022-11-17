@@ -16,12 +16,13 @@ let currencyConverter = new CurrencyConverter(fixerPlugin);
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET,POST',
+    // 'Access-Control-Allow-Methods': 'GET,POST',
     //'Access-Control-Request-Method': '*',
-    //"Access-Control-Allow-Headers": '*'
+    "Access-Control-Allow-Headers": '*'
 }
 
-const goodHeaders = {
+
+const commonHeaders = {
     'Content-Type': 'application/json'
 }
 
@@ -41,7 +42,7 @@ routes.newRoute('/api/currency-converter/v1/symbols',function (req, res) {
         return endRequestWithError(req, res, 'method_not_allowed', 'only can use GET method');
     }
 
-    res.writeHead(200, mergeObjects(goodHeaders, corsHeaders));
+    res.writeHead(200, mergeObjects(commonHeaders, corsHeaders));
     res.end(JSON.stringify(fixerPlugin.getSymbols()['symbols']));
 });
 
@@ -78,7 +79,7 @@ routes.newRoute('/api/currency-converter/v1/convert',function (req, res) {
             });
 
             promises.then((_response) => {
-                res.writeHead('200', mergeObjects(goodHeaders, corsHeaders));
+                res.writeHead('200', mergeObjects(commonHeaders, corsHeaders));
                 res.end(JSON.stringify(_response));
             }).catch((err) => {
                 return endRequestWithError(req, res, 'exception', err.message);
@@ -95,6 +96,11 @@ routes.newRoute('/api/currency-converter/v1/convert',function (req, res) {
 web.on('request', (req, res) => {
     let urlParsed = url.parse(req.url);
     let queryParsed = queryString.parse(urlParsed.query);
+
+    if (req.method === 'OPTIONS') {
+        res.writeHead(200, mergeObjects(commonHeaders, corsHeaders));
+        return res.end();
+    }
 
     if (urlParsed.pathname != null) {
         return routes.findRouteHandler(urlParsed.pathname).then((routeHandler) => {
@@ -116,7 +122,7 @@ function endRequestWithError(req, res, code, message) {
         message
     });
 
-    res.writeHead('422', mergeObjects(goodHeaders, corsHeaders));
+    res.writeHead('422', mergeObjects(commonHeaders, corsHeaders));
     res.end(JSON.stringify(errors));
 }
 
