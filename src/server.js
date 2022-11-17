@@ -14,7 +14,21 @@ let routes = new RoutesDefinition();
 let fixerPlugin = new FixerPlugin(FIXER_API_KEY);
 let currencyConverter = new CurrencyConverter(fixerPlugin);
 
-routes.newRoute('/api/currency-converter/v1/convert',function (req, res, urlParsed) {
+const goodHeaders = {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*'
+};
+
+routes.newRoute('/api/currency-converter/v1/symbols',function (req, res) {
+    if (req.method !== 'GET') {
+        return endRequestWithError(req, res, 'method_not_allowed', 'only can use GET method');
+    }
+
+    res.writeHead(200, goodHeaders);
+    res.end(JSON.stringify(fixerPlugin.getSymbols()['symbols']));
+});
+
+routes.newRoute('/api/currency-converter/v1/convert',function (req, res) {
     if (req.method !== 'POST') {
         return endRequestWithError(req, res, 'method_not_allowed', 'only can use POST method');
     }
@@ -47,7 +61,7 @@ routes.newRoute('/api/currency-converter/v1/convert',function (req, res, urlPars
             });
 
             promises.then((_response) => {
-                res.writeHead('200', {'Content-Type': 'application/json'});
+                res.writeHead('200', goodHeaders);
                 res.end(JSON.stringify(_response));
             }).catch((err) => {
                 return endRequestWithError(req, res, 'exception', err.message);
