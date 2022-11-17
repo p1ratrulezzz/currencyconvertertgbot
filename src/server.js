@@ -16,7 +16,10 @@ let currencyConverter = new CurrencyConverter(fixerPlugin);
 
 const goodHeaders = {
     'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*'
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET,POST',
+    'Access-Control-Request-Method': '*',
+    "Access-Control-Allow-Headers": '*'
 };
 
 routes.newRoute('/api/currency-converter/v1/symbols',function (req, res) {
