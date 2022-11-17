@@ -14,20 +14,34 @@ let routes = new RoutesDefinition();
 let fixerPlugin = new FixerPlugin(FIXER_API_KEY);
 let currencyConverter = new CurrencyConverter(fixerPlugin);
 
-const goodHeaders = {
-    'Content-Type': 'application/json',
+const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET,POST',
-    'Access-Control-Request-Method': '*',
-    "Access-Control-Allow-Headers": '*'
-};
+    //'Access-Control-Request-Method': '*',
+    //"Access-Control-Allow-Headers": '*'
+}
+
+const goodHeaders = {
+    'Content-Type': 'application/json'
+}
+
+function mergeObjects() {
+    let result = {};
+
+
+    for (let i=0; i < arguments.length; i++) {
+        Object.assign(result, arguments[i]);
+    }
+
+    return result;
+}
 
 routes.newRoute('/api/currency-converter/v1/symbols',function (req, res) {
     if (req.method !== 'GET') {
         return endRequestWithError(req, res, 'method_not_allowed', 'only can use GET method');
     }
 
-    res.writeHead(200, goodHeaders);
+    res.writeHead(200, mergeObjects(goodHeaders, corsHeaders));
     res.end(JSON.stringify(fixerPlugin.getSymbols()['symbols']));
 });
 
@@ -64,7 +78,7 @@ routes.newRoute('/api/currency-converter/v1/convert',function (req, res) {
             });
 
             promises.then((_response) => {
-                res.writeHead('200', goodHeaders);
+                res.writeHead('200', mergeObjects(goodHeaders, corsHeaders));
                 res.end(JSON.stringify(_response));
             }).catch((err) => {
                 return endRequestWithError(req, res, 'exception', err.message);
@@ -102,7 +116,7 @@ function endRequestWithError(req, res, code, message) {
         message
     });
 
-    res.writeHead('422', {"Content-Type": "application/json"});
+    res.writeHead('422', mergeObjects(goodHeaders, corsHeaders));
     res.end(JSON.stringify(errors));
 }
 
