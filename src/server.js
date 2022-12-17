@@ -46,6 +46,16 @@ routes.newRoute('/api/currency-converter/v1/symbols',function (req, res) {
     res.end(JSON.stringify(fixerPlugin.getSymbols()['symbols']));
 });
 
+routes.newRoute('/api/currency-converter/v1/currencies',async function (req, res) {
+    if (req.method !== 'GET') {
+        return endRequestWithError(req, res, 'method_not_allowed', 'only can use GET method');
+    }
+
+    res.writeHead(200, mergeObjects(commonHeaders, corsHeaders));
+    let currencies = await fixerPlugin.getCurrencies()
+    res.end(JSON.stringify(currencies));
+});
+
 routes.newRoute('/api/currency-converter/v1/convert',function (req, res) {
     if (req.method !== 'POST') {
         return endRequestWithError(req, res, 'method_not_allowed', 'only can use POST method');
@@ -95,7 +105,6 @@ routes.newRoute('/api/currency-converter/v1/convert',function (req, res) {
 
 web.on('request', (req, res) => {
     let urlParsed = url.parse(req.url);
-    let queryParsed = queryString.parse(urlParsed.query);
 
     if (req.method === 'OPTIONS') {
         res.writeHead(200, mergeObjects(commonHeaders, corsHeaders));
