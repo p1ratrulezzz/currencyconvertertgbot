@@ -56,6 +56,50 @@ routes.newRoute('/api/currency-converter/v1/currencies',async function (req, res
     res.end(JSON.stringify(currencies));
 });
 
+routes.newRoute('/api/currency-converter/v1/from-to-currencies',async function (req, res) {
+    if (req.method !== 'GET') {
+        return endRequestWithError(req, res, 'method_not_allowed', 'only can use GET method');
+    }
+
+    let urlParsed = url.parse(req.url);
+    let queryParsed = queryString.parse(urlParsed.query);
+
+    if (queryParsed['pairs[]'] == null) {
+        return endRequestWithError(req, res, 'no_required_params', 'missing some or all of required parameters or it is in wrong format: pairs[]');
+    }
+
+    let pairs = queryParsed['pairs[]'];
+    let currenciesResult = [];
+    let pairsChain = Promise.resolve(currenciesResult);
+    pairs.forEach((_v) => {
+        let ruins = String(_v).split(',');
+        if (ruins.length !== 2) {
+            return endRequestWithError(req, res, 'wrong_params', 'error in pair format ' + _v);
+        }
+
+        pairsChain = pairsChain.then((currenciesResult) => {
+            let from = String(ruins[0]).toUpperCase();
+            let to = String(ruins[1]).toUpperCase();
+            return fixerPlugin.fromToCurrency(from, to).then((currency) => {
+                currency.MachineName = String(from) + '_' + String(to);
+                currenciesResult.push(currency);
+                return currenciesResult;
+            });
+        }).catch((err) => {
+            return endRequestWithError(req, res, 'exception', String(err));
+        });
+    });
+
+    pairsChain.then((currenciesResult) => {
+        res.writeHead(200, mergeObjects(commonHeaders, corsHeaders));
+        res.end(JSON.stringify(currenciesResult));
+    }).catch((err) => {
+        return endRequestWithError(req, res, 'exception', String(err));
+    });
+
+    return pairsChain;
+});
+
 routes.newRoute('/api/currency-converter/v1/convert',function (req, res) {
     if (req.method !== 'POST') {
         return endRequestWithError(req, res, 'method_not_allowed', 'only can use POST method');
