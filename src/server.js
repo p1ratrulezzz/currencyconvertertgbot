@@ -70,15 +70,27 @@ routes.newRoute('/api/currency-converter/v1/from-to-currencies',async function (
         }
 
         let bases = queryParsed['bases[]'];
+        bases = bases instanceof Array ? bases : Array(bases);
+
         let currenciesResult = {};
         let currencyKeys = Object.keys(fixerPlugin.getSymbols()['symbols']);
+        if (Boolean(queryParsed['limit_to_bases']) === true) {
+            currencyKeys = bases;
+        }
+        else if (queryParsed['to[]'] != null) {
+            currencyKeys = queryParsed['to[]'];
+            currencyKeys = currencyKeys instanceof Array ? currencyKeys : Array(currencyKeys);
+        }
 
         for (let ibase = 0; ibase < bases.length; ibase++) {
             for (let icurrency = 0; icurrency < currencyKeys.length; icurrency++) {
                 let from = String(bases[ibase]).toUpperCase();
-                let to = currencyKeys[icurrency];
-                let key = from + '_' + to;
-                currenciesResult[key] = await fixerPlugin.fromToCurrency(from, to);
+                let to = String(currencyKeys[icurrency]).toUpperCase();
+
+                if (from !== to) {
+                    let key = from + '_' + to;
+                    currenciesResult[key] = await fixerPlugin.fromToCurrency(from, to);
+                }
             }
         }
 
