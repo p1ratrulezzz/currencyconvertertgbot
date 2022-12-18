@@ -64,40 +64,31 @@ routes.newRoute('/api/currency-converter/v1/from-to-currencies',async function (
     let urlParsed = url.parse(req.url);
     let queryParsed = queryString.parse(urlParsed.query);
 
-    if (queryParsed['pairs[]'] == null) {
-        return endRequestWithError(req, res, 'no_required_params', 'missing some or all of required parameters or it is in wrong format: pairs[]');
-    }
-
-    let pairs = queryParsed['pairs[]'];
-    let currenciesResult = [];
-    let pairsChain = Promise.resolve(currenciesResult);
-    pairs.forEach((_v) => {
-        let ruins = String(_v).split(',');
-        if (ruins.length !== 2) {
-            return endRequestWithError(req, res, 'wrong_params', 'error in pair format ' + _v);
+    try {
+        if (queryParsed['bases[]'] == null) {
+            return endRequestWithError(req, res, 'no_required_params', 'missing some or all of required parameters or it is in wrong format: bases[]');
         }
 
-        pairsChain = pairsChain.then((currenciesResult) => {
-            let from = String(ruins[0]).toUpperCase();
-            let to = String(ruins[1]).toUpperCase();
-            return fixerPlugin.fromToCurrency(from, to).then((currency) => {
-                currency.MachineName = String(from) + '_' + String(to);
-                currenciesResult.push(currency);
-                return currenciesResult;
-            });
-        }).catch((err) => {
-            return endRequestWithError(req, res, 'exception', String(err));
-        });
-    });
+        let bases = queryParsed['bases[]'];
+        let currenciesResult = {};
+        let currencyKeys = Object.keys(fixerPlugin.getSymbols()['symbols']);
 
-    pairsChain.then((currenciesResult) => {
+        for (let ibase = 0; ibase < bases.length; ibase++) {
+            for (let icurrency = 0; icurrency < currencyKeys.length; icurrency++) {
+                let from = String(bases[ibase]).toUpperCase();
+                let to = currencyKeys[icurrency];
+                let key = from + '_' + to;
+                currenciesResult[key] = await fixerPlugin.fromToCurrency(from, to);
+            }
+        }
+
         res.writeHead(200, mergeObjects(commonHeaders, corsHeaders));
         res.end(JSON.stringify(currenciesResult));
-    }).catch((err) => {
-        return endRequestWithError(req, res, 'exception', String(err));
-    });
+    }
+    catch (e) {
+        return endRequestWithError(req, res, 'exception', e.message);
+    }
 
-    return pairsChain;
 });
 
 routes.newRoute('/api/currency-converter/v1/convert',function (req, res) {
