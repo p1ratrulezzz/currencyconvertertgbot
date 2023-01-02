@@ -1,9 +1,13 @@
 let BOTS = [];
 const FIXER_API_KEY = 'token';
+const SERVER_PORT = 20000;
+const SERVER_IP = '0.0.0.0';
 
 export {
     BOTS,
-    FIXER_API_KEY
+    FIXER_API_KEY,
+    SERVER_PORT,
+    SERVER_IP
 }
 
 BOTS.push({

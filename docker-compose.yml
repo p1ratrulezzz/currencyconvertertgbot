@@ -8,3 +8,11 @@ services:
     user: 'app'
     command: ["npm", "run", "bot"]
     restart: unless-stopped
+  server:
+    build: .
+    env_file:
+      - ./.env
+    working_dir: /app
+    user: 'app'
+    command: [ "npm", "run", "server" ]
+    restart: unless-stopped
