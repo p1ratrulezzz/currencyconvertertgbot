@@ -4,6 +4,8 @@ import {caching} from "cache-manager";
 import {create as DiskStore} from "cache-manager-fs-hash";
 import os from "os";
 import {createHash} from "node:crypto";
+import {sum as adler32Sum} from "adler32";
+import {SEED} from "../../../config.js";
 
 /**
  * @abstract
@@ -16,6 +18,33 @@ class SourcePluginAbstract extends SourcePluginInterface {
      */
     _cacheManager;
 
+    _ttl = 3600;
+
+    /**
+     *
+     * @type {string}
+     * @private
+     */
+    _cachePrefix = ':';
+
+    setCacheSeed(seed) {
+        let crc = adler32Sum(JSON.stringify(seed));
+        this._cachePrefix = String(crc) + ':';
+    }
+
+    setCacheTtl(ttlSeconds) {
+        this._ttl = ttlSeconds;
+    }
+
+    /**
+     *
+     * @return {number}
+     *   TTL in seconds
+     */
+    getCacheTtl() {
+        return this._ttl;
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -26,15 +55,19 @@ class SourcePluginAbstract extends SourcePluginInterface {
     constructor() {
         super();
 
+        if (SEED != null) {
+            this.setCacheSeed(SEED);
+        }
+
+        // 12h
+        this.setCacheTtl(12 * 60 * 60);
+
         let hash = createHash('sha256');
         hash.update(this.constructor.name);
 
-        let ttl_date = new Date();
-        ttl_date.setHours(23, 59, 59, 999);
-
         let fsStore = new DiskStore({
             path: os.tmpdir() + '/' + hash.digest('hex'),
-            ttl: Math.floor(Number(ttl_date) / 1000)
+            ttl: this.getCacheTtl()
         });
 
         this._cacheManager = caching(fsStore);
@@ -50,7 +83,12 @@ class SourcePluginAbstract extends SourcePluginInterface {
     }
 
     cacheKey(options) {
-        return 'currencies';
+        return this._cachePrefix + 'currencies';
+    }
+
+    isTimestampExpired(ts) {
+        let expireDate = new Date((Number(ts) + this._ttl) * 1000);
+        return new Date() > expireDate;
     }
 
     /**
