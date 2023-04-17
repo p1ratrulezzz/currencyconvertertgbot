@@ -25,6 +25,16 @@ class SourcePluginInterface {
      */
     cacheKey(options) {}
 
+    /**
+     * @return {String}
+     */
+    getNativeCurrencyCode() {}
+
+    /**
+     * @return {String}
+     */
+    getTargetCurrencyCode() {}
+
 }
 export {
     SourcePluginInterface

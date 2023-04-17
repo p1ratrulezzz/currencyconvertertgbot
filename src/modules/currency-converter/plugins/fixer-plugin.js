@@ -7,13 +7,13 @@ class FixerPlugin extends SourcePluginAbstract {
 
     API_KEY = null;
 
-    constructor(apikey, nativeCurrency) {
+    constructor(apikey, nativeCurrency, targetCurrency) {
         super();
 
         this.API_KEY = apikey;
 
-        this._currencyNative.Code = nativeCurrency;
-        this._currencyNative.CodeTo = nativeCurrency;
+        this._currencyNative.Code = nativeCurrency || 'USD';
+        this._currencyNative.CodeTo = targetCurrency || 'EUR';
 
         if (this.API_KEY == null) {
             throw new Error("no FIXER_APIKEY");

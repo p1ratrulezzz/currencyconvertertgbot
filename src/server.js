@@ -1,18 +1,16 @@
 'use strict';
 
+import {PLUGIN_DEFAULT, SERVER_PORT, SERVER_IP} from "../config.js";
 import {createServer} from 'node:http'
 import * as url from "url";
 import {RoutesDefinition} from "./route-definitions.js";
 import * as queryString from "querystring";
 import {CurrencyConverter} from "./modules/currency-converter/currency-converter.js";
-import {FixerPlugin} from "./modules/currency-converter/plugins/fixer-plugin.js";
-import {FIXER_API_KEY, SERVER_PORT, SERVER_IP} from "../config.js";
 
 let web = createServer();
 let routes = new RoutesDefinition();
 
-let fixerPlugin = new FixerPlugin(FIXER_API_KEY);
-let currencyConverter = new CurrencyConverter(fixerPlugin);
+let currencyConverter = new CurrencyConverter(PLUGIN_DEFAULT);
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',

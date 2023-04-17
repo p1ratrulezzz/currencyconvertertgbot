@@ -1,8 +1,8 @@
+import {SourcePluginInterface} from "./modules/currency-converter/source-plugin-interface.js";
+import {BOTS} from "../config.js";
 import {default as TelegramBot} from "node-telegram-bot-api";
 import {CurrencyConverter} from "./modules/currency-converter/currency-converter.js";
 import {createHash} from "node:crypto"
-import {FixerPlugin} from "./modules/currency-converter/plugins/fixer-plugin.js";
-import {BOTS, FIXER_API_KEY} from "../config.js";
 import {Logger} from "./modules/logger/logger.js";
 
 Number.prototype.prettyPrint = function() {
@@ -27,7 +27,16 @@ Number.prototype.prettyPrint = function() {
 
 let currencyTextRegex = /([0-9\., ]+)(.*)/i;
 
-function createBot(botOptions = {}, sourcePlugin, CurrencyCodeSource, CurrencyCodeTo) {
+/**
+ *
+ * @param botOptions
+ * @param sourcePlugin {SourcePluginInterface}
+ * @returns {*}
+ */
+function createBot(botOptions = {}, sourcePlugin) {
+    let CurrencyCodeSource = sourcePlugin.getNativeCurrencyCode();
+    let CurrencyCodeTo = sourcePlugin.getTargetCurrencyCode();
+
     // Create a bot that uses 'polling' to fetch new updates
     /**
      * @var bot {TelegramBot}
@@ -127,9 +136,9 @@ function createBot(botOptions = {}, sourcePlugin, CurrencyCodeSource, CurrencyCo
 
 let i = 1;
 let log = new Logger();
+
 BOTS.forEach((botConfig) => {
-    let sourcePlugin = new FixerPlugin(FIXER_API_KEY, botConfig.to);
-    createBot(botConfig, sourcePlugin, botConfig.source, botConfig.to);
+    createBot(botConfig, botConfig.plugin);
     log.log('Bot ' + String(i++) + ' started');
 });
 

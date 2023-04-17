@@ -153,6 +153,14 @@ class SourcePluginAbstract extends SourcePluginInterface {
             return currency;
         });
     }
+
+    getNativeCurrencyCode() {
+        return this._currencyNative.Code;
+    }
+
+    getTargetCurrencyCode() {
+        return this._currencyNative.CodeTo;
+    }
 }
 
 export {
